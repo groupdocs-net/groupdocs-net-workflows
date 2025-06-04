@@ -27,6 +27,7 @@ jobs:
         with:
           repository: groupdocs-net/groupdocs-net
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
           fetch-depth: 0
 
       - name: Set up Hugo
