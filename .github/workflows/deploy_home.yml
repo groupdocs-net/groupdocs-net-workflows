@@ -1,0 +1,58 @@
+name: Deploy Home
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deployment target'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - qa
+          - prod
+
+env:
+  HUGO_VERSION: 0.101.0
+  AWS_REGION: us-west-2
+
+jobs:
+  deploy:
+    name: Deploy to S3
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: groupdocs-net/groupdocs-net
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: ${{ env.HUGO_VERSION }}
+          extended: true
+
+      - name: Build
+        run: |
+          if [ "${{ github.event.inputs.target }}" = "qa" ]; then
+            hugo --minify --config ./configs/www.groupdocs.net.toml --baseURL "https://qa.groupdocs.net/"
+          elif [ "${{ github.event.inputs.target }}" = "prod" ]; then
+            hugo --minify --config ./configs/www.groupdocs.net.toml --baseURL "https://www.groupdocs.net/"
+          else
+            echo "Invalid deployment target"
+            exit 1
+          fi
+
+      - name: Deploy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.target }}" = "qa" ]; then
+            hugo deploy --target qa --invalidateCDN --verbose
+          elif [ "${{ github.event.inputs.target }}" = "prod" ]; then
+            hugo deploy --target prod --invalidateCDN --verbose
+          fi
