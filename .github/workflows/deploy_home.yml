@@ -53,7 +53,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           if [ "${{ github.event.inputs.target }}" = "qa" ]; then
-            hugo deploy --target qa --invalidateCDN --verbose
+            hugo deploy --config ./configs/www.groupdocs.net.toml --target qa --invalidateCDN --verbose
           elif [ "${{ github.event.inputs.target }}" = "prod" ]; then
-            hugo deploy --target prod --invalidateCDN --verbose
+            hugo deploy --config ./configs/www.groupdocs.net.toml --target prod --invalidateCDN --verbose
           fi
