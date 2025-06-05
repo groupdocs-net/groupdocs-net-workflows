@@ -25,7 +25,8 @@ on:
           - products
           - reference
           - websites
-  run-name: Deploy ${{ inputs.subdomain }} to ${{ inputs.target }}
+
+run-name: Deploy ${{ inputs.subdomain }} to ${{ inputs.target }}
 
 env:
   HUGO_VERSION: 0.101.0
