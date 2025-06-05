@@ -65,9 +65,15 @@ jobs:
           fi
 
           if [ "$TARGET" = "prod" ]; then
-            BASEURL="https://${NAME:+$NAME.}groupdocs.net/"
-            CONFIG="./configs/${NAME:+$NAME.}groupdocs.net.toml"
-            DEPLOY_TARGET="prod"
+            if [ "$SUBDOMAIN" = "home" ]; then
+              BASEURL="https://www.groupdocs.net/"
+              CONFIG="./configs/www.groupdocs.net.toml"
+              DEPLOY_TARGET="prod"
+            else
+              BASEURL="https://${NAME:+$NAME.}groupdocs.net/"
+              CONFIG="./configs/${NAME:+$NAME.}groupdocs.net.toml"
+              DEPLOY_TARGET="prod"
+            fi
           elif [ "$TARGET" = "qa" ]; then
             if [ "$SUBDOMAIN" = "home" ]; then
               BASEURL="https://qa.groupdocs.net/"
