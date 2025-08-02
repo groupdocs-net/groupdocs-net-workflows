@@ -12,8 +12,17 @@ on:
           - GroupDocs.Conversion.LowCode
           #- GroupDocs.Merger.LowCode
           #- GroupDocs.Metadata.LowCode
+      deploy_target:
+        description: 'Deploy if there are updates?'
+        required: true
+        default: 'deploy to qa'
+        type: choice
+        options:
+          - do not deploy
+          - deploy to qa
+          - deploy to prod
 
-run-name: Generate API refs for ${{ inputs.groupdocs_library }}
+run-name: Generate API refs for ${{ inputs.groupdocs_library }} (${{ inputs.deploy_target }})
 
 env:
   AWS_REGION: us-west-2
@@ -80,6 +89,7 @@ jobs:
           # Check if there are any changes
           if git diff --quiet && git diff --staged --quiet; then
             echo "No changes detected in reference content"
+            echo "changes_detected=false" >> $GITHUB_ENV
           else
             echo "Changes detected, committing..."
             git add .
@@ -91,4 +101,36 @@ jobs:
             
             git push origin main
             echo "Changes committed and pushed successfully"
+            echo "changes_detected=true" >> $GITHUB_ENV
           fi
+
+      - name: Set deployment target
+        if: env.changes_detected == 'true' && github.event.inputs.deploy_target != 'do not deploy'
+        id: deploy_setup
+        run: |
+          DEPLOY_CHOICE="${{ github.event.inputs.deploy_target }}"
+          
+          case "$DEPLOY_CHOICE" in
+            "deploy to qa")
+              TARGET="qa"
+              ;;
+            "deploy to prod")
+              TARGET="prod"
+              ;;
+            *)
+              echo "No deployment selected"
+              exit 0
+              ;;
+          esac
+          
+          echo "target=$TARGET" >> $GITHUB_OUTPUT
+          echo "Selected deployment target: $TARGET"
+
+      - name: Trigger deployment
+        if: env.changes_detected == 'true' && github.event.inputs.deploy_target != 'do not deploy'
+        run: |
+          gh workflow run deploy_site.yml \
+            --field target=${{ steps.deploy_setup.outputs.target }} \
+            --field subdomain=reference
+        env:
+          GH_TOKEN: ${{ secrets.READ_PAT }}
