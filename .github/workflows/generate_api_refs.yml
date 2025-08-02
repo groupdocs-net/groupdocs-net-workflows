@@ -64,7 +64,7 @@ jobs:
       - name: Generate API references
         run: |
           cd ./utils/api-refs-generator/
-          docker run -it --rm \
+          docker run --rm \
             -v "$(pwd)/../../content/reference.groupdocs.net/${{ steps.setup.outputs.output_folder }}/":/app/output \
             groupdocs-api-refs-generator \
             "${{ github.event.inputs.groupdocs_library }}"
