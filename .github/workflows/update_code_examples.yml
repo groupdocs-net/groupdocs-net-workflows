@@ -83,13 +83,30 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
+          # Debug: List directory structure
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          if [ -d "Examples" ]; then
+            echo "Examples directory found"
+            echo "Examples directory contents:"
+            ls -la Examples/
+          else
+            echo "Examples directory not found!"
+          fi
+          
           # Find and update .csproj files
-          UPDATED=false
+          echo "Searching for .csproj files in Examples directory..."
           find Examples -name "*.csproj" -type f | while read -r file; do
+            echo "Processing file: $file"
             if grep -q "PackageReference Include=\"$LIBRARY\"" "$file"; then
-              echo "Updating $file..."
+              echo "Found PackageReference in $file, updating version to $VERSION..."
+              # Handle both self-closing and multi-line PackageReference formats
               sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\" \/>/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\" \/>/g" "$file"
-              UPDATED=true
+              sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\">/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\">/g" "$file"
+              echo "Updated $file"
+            else
+              echo "No matching PackageReference found in $file"
             fi
           done
           
@@ -122,11 +139,30 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
+          # Debug: List directory structure
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          if [ -d "Examples" ]; then
+            echo "Examples directory found"
+            echo "Examples directory contents:"
+            ls -la Examples/
+          else
+            echo "Examples directory not found!"
+          fi
+          
           # Find and update .fsproj files
+          echo "Searching for .fsproj files in Examples directory..."
           find Examples -name "*.fsproj" -type f | while read -r file; do
+            echo "Processing file: $file"
             if grep -q "PackageReference Include=\"$LIBRARY\"" "$file"; then
-              echo "Updating $file..."
+              echo "Found PackageReference in $file, updating version to $VERSION..."
+              # Handle both self-closing and multi-line PackageReference formats
               sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\" \/>/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\" \/>/g" "$file"
+              sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\">/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\">/g" "$file"
+              echo "Updated $file"
+            else
+              echo "No matching PackageReference found in $file"
             fi
           done
           
@@ -159,11 +195,30 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
+          # Debug: List directory structure
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          if [ -d "Examples" ]; then
+            echo "Examples directory found"
+            echo "Examples directory contents:"
+            ls -la Examples/
+          else
+            echo "Examples directory not found!"
+          fi
+          
           # Find and update .vbproj files
+          echo "Searching for .vbproj files in Examples directory..."
           find Examples -name "*.vbproj" -type f | while read -r file; do
+            echo "Processing file: $file"
             if grep -q "PackageReference Include=\"$LIBRARY\"" "$file"; then
-              echo "Updating $file..."
+              echo "Found PackageReference in $file, updating version to $VERSION..."
+              # Handle both self-closing and multi-line PackageReference formats
               sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\" \/>/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\" \/>/g" "$file"
+              sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\">/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\">/g" "$file"
+              echo "Updated $file"
+            else
+              echo "No matching PackageReference found in $file"
             fi
           done
           
