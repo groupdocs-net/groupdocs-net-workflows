@@ -1,0 +1,202 @@
+name: Update Code Examples
+
+on:
+  workflow_dispatch:
+    inputs:
+      groupdocs_library:
+        description: 'Select library to update examples for'
+        required: true
+        default: 'GroupDocs.Conversion.LowCode'
+        type: choice
+        options:
+          - GroupDocs.Conversion.LowCode
+          #- GroupDocs.Merger.LowCode
+          #- GroupDocs.Metadata.LowCode
+
+run-name: Update code examples for ${{ inputs.groupdocs_library }}
+
+jobs:
+  update-examples:
+    name: Update Code Examples
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.READ_PAT }}
+          ref: main
+          fetch-depth: 0
+
+      - name: Get package version
+        id: version
+        run: |
+          LIBRARY="${{ github.event.inputs.groupdocs_library }}"
+          VERSION=$(jq -r --arg lib "$LIBRARY" '.[$lib]' nuget-packages.json)
+          
+          if [ "$VERSION" = "null" ]; then
+            echo "Library $LIBRARY not found in nuget-packages.json"
+            exit 1
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version for $LIBRARY: $VERSION"
+
+      - name: Set repository names
+        id: repos
+        run: |
+          LIBRARY="${{ github.event.inputs.groupdocs_library }}"
+          
+          case "$LIBRARY" in
+            "GroupDocs.Conversion.LowCode")
+              REPO_BASE="groupdocs-conversion-lowcode-examples"
+              ;;
+            "GroupDocs.Merger.LowCode")
+              REPO_BASE="groupdocs-merger-lowcode-examples"
+              ;;
+            "GroupDocs.Metadata.LowCode")
+              REPO_BASE="groupdocs-metadata-lowcode-examples"
+              ;;
+            *)
+              echo "Unknown library: $LIBRARY"
+              exit 1
+              ;;
+          esac
+          
+          echo "repo_base=$REPO_BASE" >> $GITHUB_OUTPUT
+          echo "Repository base name: $REPO_BASE"
+
+      - name: Update C# examples
+        id: update_csharp
+        run: |
+          REPO="groupdocs-net/${{ steps.repos.outputs.repo_base }}-csharp"
+          VERSION="${{ steps.version.outputs.version }}"
+          LIBRARY="${{ github.event.inputs.groupdocs_library }}"
+          
+          echo "Updating $REPO..."
+          
+          # Clone repository
+          git clone https://${{ secrets.READ_PAT }}@github.com/$REPO.git csharp-examples
+          cd csharp-examples
+          
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Find and update .csproj files
+          UPDATED=false
+          find Examples -name "*.csproj" -type f | while read -r file; do
+            if grep -q "PackageReference Include=\"$LIBRARY\"" "$file"; then
+              echo "Updating $file..."
+              sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\" \/>/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\" \/>/g" "$file"
+              UPDATED=true
+            fi
+          done
+          
+          # Check for changes and commit
+          if git diff --quiet; then
+            echo "No changes in C# examples"
+            echo "updated=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected in C# examples"
+            git add .
+            git commit -m "Update $LIBRARY to version $VERSION"
+            git push origin main
+            echo "updated=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update F# examples
+        id: update_fsharp
+        run: |
+          REPO="groupdocs-net/${{ steps.repos.outputs.repo_base }}-fsharp"
+          VERSION="${{ steps.version.outputs.version }}"
+          LIBRARY="${{ github.event.inputs.groupdocs_library }}"
+          
+          echo "Updating $REPO..."
+          
+          # Clone repository
+          git clone https://${{ secrets.READ_PAT }}@github.com/$REPO.git fsharp-examples
+          cd fsharp-examples
+          
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Find and update .fsproj files
+          find Examples -name "*.fsproj" -type f | while read -r file; do
+            if grep -q "PackageReference Include=\"$LIBRARY\"" "$file"; then
+              echo "Updating $file..."
+              sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\" \/>/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\" \/>/g" "$file"
+            fi
+          done
+          
+          # Check for changes and commit
+          if git diff --quiet; then
+            echo "No changes in F# examples"
+            echo "updated=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected in F# examples"
+            git add .
+            git commit -m "Update $LIBRARY to version $VERSION"
+            git push origin main
+            echo "updated=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update VB.NET examples
+        id: update_vbnet
+        run: |
+          REPO="groupdocs-net/${{ steps.repos.outputs.repo_base }}-vbnet"
+          VERSION="${{ steps.version.outputs.version }}"
+          LIBRARY="${{ github.event.inputs.groupdocs_library }}"
+          
+          echo "Updating $REPO..."
+          
+          # Clone repository
+          git clone https://${{ secrets.READ_PAT }}@github.com/$REPO.git vbnet-examples
+          cd vbnet-examples
+          
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Find and update .vbproj files
+          find Examples -name "*.vbproj" -type f | while read -r file; do
+            if grep -q "PackageReference Include=\"$LIBRARY\"" "$file"; then
+              echo "Updating $file..."
+              sed -i "s/<PackageReference Include=\"$LIBRARY\" Version=\"[^\"]*\" \/>/<PackageReference Include=\"$LIBRARY\" Version=\"$VERSION\" \/>/g" "$file"
+            fi
+          done
+          
+          # Check for changes and commit
+          if git diff --quiet; then
+            echo "No changes in VB.NET examples"
+            echo "updated=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected in VB.NET examples"
+            git add .
+            git commit -m "Update $LIBRARY to version $VERSION"
+            git push origin main
+            echo "updated=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update nuget-packages.json
+        if: steps.update_csharp.outputs.updated == 'true' || steps.update_fsharp.outputs.updated == 'true' || steps.update_vbnet.outputs.updated == 'true'
+        run: |
+          LIBRARY="${{ github.event.inputs.groupdocs_library }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          echo "Updating nuget-packages.json with confirmed version $VERSION for $LIBRARY"
+          
+          # Configure git for this repository
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Update the JSON file (it should already have the correct version, but this confirms it)
+          jq --arg lib "$LIBRARY" --arg ver "$VERSION" '.[$lib] = $ver' nuget-packages.json > tmp.json && mv tmp.json nuget-packages.json
+          
+          # Commit the change
+          git add nuget-packages.json
+          git commit -m "Confirm $LIBRARY version $VERSION in examples repositories"
+          git push origin main
+          
+          echo "nuget-packages.json updated successfully"
