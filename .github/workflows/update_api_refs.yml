@@ -1,10 +1,10 @@
-name: Generate API References
+name: Update API References
 
 on:
   workflow_dispatch:
     inputs:
       groupdocs_library:
-        description: 'Select library to generate references for'
+        description: 'Select library to update references for'
         required: true
         default: 'GroupDocs.Conversion.LowCode'
         type: choice
@@ -22,14 +22,14 @@ on:
           - deploy to qa
           - deploy to prod
 
-run-name: Generate API refs for ${{ inputs.groupdocs_library }} (${{ inputs.deploy_target }})
+run-name: Update API refs for ${{ inputs.groupdocs_library }} (${{ inputs.deploy_target }})
 
 env:
   AWS_REGION: us-west-2
 
 jobs:
-  generate-refs:
-    name: Generate API References
+  update-refs:
+    name: Update API References
     runs-on: ubuntu-latest
 
     steps:
