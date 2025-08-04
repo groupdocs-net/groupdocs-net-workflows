@@ -13,7 +13,7 @@ on:
           #- GroupDocs.Merger.LowCode
           #- GroupDocs.Metadata.LowCode
 
-run-name: Update code examples for ${{ inputs.groupdocs_library }}
+run-name: Update code examples for ${{ inputs.groupdocs_library }} to latest version
 
 jobs:
   update-examples:
@@ -28,19 +28,54 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Get package version
+      - name: Get current and latest package versions
         id: version
         run: |
           LIBRARY="${{ github.event.inputs.groupdocs_library }}"
-          VERSION=$(jq -r --arg lib "$LIBRARY" '.[$lib]' nuget-packages.json)
           
-          if [ "$VERSION" = "null" ]; then
+          # Get current version from nuget-packages.json
+          CURRENT_VERSION=$(jq -r --arg lib "$LIBRARY" '.[$lib]' nuget-packages.json)
+          
+          if [ "$CURRENT_VERSION" = "null" ]; then
             echo "Library $LIBRARY not found in nuget-packages.json"
             exit 1
           fi
           
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Package version for $LIBRARY: $VERSION"
+          echo "Current version in nuget-packages.json: $CURRENT_VERSION"
+          
+          # Get latest version from NuGet API
+          PACKAGE_ID_LOWER=$(echo "$LIBRARY" | tr '[:upper:]' '[:lower:]')
+          echo "Querying NuGet API for package: $PACKAGE_ID_LOWER"
+          
+          NUGET_RESPONSE=$(curl -s "https://api.nuget.org/v3-flatcontainer/$PACKAGE_ID_LOWER/index.json")
+          
+          if [ $? -ne 0 ] || [ -z "$NUGET_RESPONSE" ]; then
+            echo "Failed to fetch package information from NuGet"
+            exit 1
+          fi
+          
+          # Extract latest version (last item in versions array)
+          LATEST_VERSION=$(echo "$NUGET_RESPONSE" | jq -r '.versions[-1]')
+          
+          if [ "$LATEST_VERSION" = "null" ] || [ -z "$LATEST_VERSION" ]; then
+            echo "Could not determine latest version from NuGet API response"
+            echo "Response: $NUGET_RESPONSE"
+            exit 1
+          fi
+          
+          echo "Latest version on NuGet: $LATEST_VERSION"
+          
+          # Compare versions
+          if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+            echo "Current version ($CURRENT_VERSION) is already the latest version"
+            echo "has_update=false" >> $GITHUB_OUTPUT
+          else
+            echo "Update available: $CURRENT_VERSION -> $LATEST_VERSION"
+            echo "has_update=true" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
 
       - name: Set repository names
         id: repos
@@ -67,10 +102,11 @@ jobs:
           echo "Repository base name: $REPO_BASE"
 
       - name: Update C# examples
+        if: steps.version.outputs.has_update == 'true'
         id: update_csharp
         run: |
           REPO="groupdocs-net/${{ steps.repos.outputs.repo_base }}-csharp"
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.latest_version }}"
           LIBRARY="${{ github.event.inputs.groupdocs_library }}"
           
           echo "Updating $REPO..."
@@ -123,10 +159,11 @@ jobs:
           fi
 
       - name: Update F# examples
+        if: steps.version.outputs.has_update == 'true'
         id: update_fsharp
         run: |
           REPO="groupdocs-net/${{ steps.repos.outputs.repo_base }}-fsharp"
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.latest_version }}"
           LIBRARY="${{ github.event.inputs.groupdocs_library }}"
           
           echo "Updating $REPO..."
@@ -179,10 +216,11 @@ jobs:
           fi
 
       - name: Update VB.NET examples
+        if: steps.version.outputs.has_update == 'true'
         id: update_vbnet
         run: |
           REPO="groupdocs-net/${{ steps.repos.outputs.repo_base }}-vbnet"
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.latest_version }}"
           LIBRARY="${{ github.event.inputs.groupdocs_library }}"
           
           echo "Updating $REPO..."
@@ -234,24 +272,39 @@ jobs:
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Update nuget-packages.json
-        if: steps.update_csharp.outputs.updated == 'true' || steps.update_fsharp.outputs.updated == 'true' || steps.update_vbnet.outputs.updated == 'true'
+      - name: Update nuget-packages.json with latest version
+        if: steps.version.outputs.has_update == 'true' && (steps.update_csharp.outputs.updated == 'true' || steps.update_fsharp.outputs.updated == 'true' || steps.update_vbnet.outputs.updated == 'true')
         run: |
           LIBRARY="${{ github.event.inputs.groupdocs_library }}"
-          VERSION="${{ steps.version.outputs.version }}"
+          OLD_VERSION="${{ steps.version.outputs.current_version }}"
+          NEW_VERSION="${{ steps.version.outputs.latest_version }}"
           
-          echo "Updating nuget-packages.json with confirmed version $VERSION for $LIBRARY"
+          echo "Updating nuget-packages.json from version $OLD_VERSION to $NEW_VERSION for $LIBRARY"
           
           # Configure git for this repository
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Update the JSON file (it should already have the correct version, but this confirms it)
-          jq --arg lib "$LIBRARY" --arg ver "$VERSION" '.[$lib] = $ver' nuget-packages.json > tmp.json && mv tmp.json nuget-packages.json
+          # Update the JSON file with the new version
+          jq --arg lib "$LIBRARY" --arg ver "$NEW_VERSION" '.[$lib] = $ver' nuget-packages.json > tmp.json && mv tmp.json nuget-packages.json
           
           # Commit the change
           git add nuget-packages.json
-          git commit -m "Confirm $LIBRARY version $VERSION in examples repositories"
+          git commit -m "Update $LIBRARY from $OLD_VERSION to $NEW_VERSION
+
+Examples repositories updated successfully:
+- C# examples: ${{ steps.update_csharp.outputs.updated == 'true' && 'Updated' || 'Skipped' }}
+- F# examples: ${{ steps.update_fsharp.outputs.updated == 'true' && 'Updated' || 'Skipped' }}
+- VB.NET examples: ${{ steps.update_vbnet.outputs.updated == 'true' && 'Updated' || 'Skipped' }}
+
+Generated by: ${{ github.workflow }}
+Run ID: ${{ github.run_id }}
+Triggered by: ${{ github.actor }}"
           git push origin main
           
-          echo "nuget-packages.json updated successfully"
+          echo "nuget-packages.json updated successfully from $OLD_VERSION to $NEW_VERSION"
+
+      - name: No update needed
+        if: steps.version.outputs.has_update == 'false'
+        run: |
+          echo "No update needed. Current version ${{ steps.version.outputs.current_version }} is already the latest version available on NuGet."
