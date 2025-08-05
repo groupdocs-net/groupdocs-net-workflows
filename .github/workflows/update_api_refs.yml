@@ -24,9 +24,6 @@ on:
 
 run-name: Update API refs for ${{ inputs.groupdocs_library }} (${{ inputs.deploy_target }})
 
-env:
-  AWS_REGION: us-west-2
-
 jobs:
   update-refs:
     name: Update API References
