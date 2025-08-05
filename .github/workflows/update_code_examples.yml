@@ -155,6 +155,13 @@ jobs:
             git add .
             git commit -m "Update $LIBRARY to version $VERSION"
             git push origin main
+            
+            # Create and push tag
+            echo "Creating tag $VERSION for C# examples"
+            git tag -a "$VERSION" -m "Release version $VERSION"
+            git push origin "$VERSION"
+            echo "Tag $VERSION created and pushed successfully for C# examples"
+            
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
@@ -212,6 +219,13 @@ jobs:
             git add .
             git commit -m "Update $LIBRARY to version $VERSION"
             git push origin main
+            
+            # Create and push tag
+            echo "Creating tag $VERSION for F# examples"
+            git tag -a "$VERSION" -m "Release version $VERSION"
+            git push origin "$VERSION"
+            echo "Tag $VERSION created and pushed successfully for F# examples"
+            
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
@@ -269,6 +283,13 @@ jobs:
             git add .
             git commit -m "Update $LIBRARY to version $VERSION"
             git push origin main
+            
+            # Create and push tag
+            echo "Creating tag $VERSION for VB.NET examples"
+            git tag -a "$VERSION" -m "Release version $VERSION"
+            git push origin "$VERSION"
+            echo "Tag $VERSION created and pushed successfully for VB.NET examples"
+            
             echo "updated=true" >> $GITHUB_OUTPUT
           fi
 
