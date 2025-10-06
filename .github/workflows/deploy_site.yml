@@ -14,9 +14,10 @@ on:
       subdomain:
         description: 'Subdomain (e.g., home, about, blog)'
         required: false
-        default: 'home'
+        default: 'all'
         type: choice
         options:
+          - all
           - home
           - about
           - blog
@@ -53,6 +54,7 @@ jobs:
           extended: true
 
       - name: Set config and URL
+        if: ${{ github.event.inputs.subdomain != 'all' }}
         id: setup
         run: |
           SUBDOMAIN="${{ github.event.inputs.subdomain }}"
@@ -93,11 +95,59 @@ jobs:
           echo "configfile=$CONFIG" >> $GITHUB_OUTPUT
           echo "deploytarget=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
 
+      - name: Build and Deploy All
+        if: ${{ github.event.inputs.subdomain == 'all' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          TARGET="${{ github.event.inputs.target }}"
+          for SUBDOMAIN in home about blog docs kb products reference websites; do
+            if [ "$SUBDOMAIN" = "home" ]; then
+              NAME=""
+            else
+              NAME="$SUBDOMAIN"
+            fi
+
+            if [ "$TARGET" = "prod" ]; then
+              if [ "$SUBDOMAIN" = "home" ]; then
+                BASEURL="https://www.groupdocs.net/"
+                CONFIG="./configs/www.groupdocs.net.toml"
+                DEPLOY_TARGET="prod"
+              else
+                BASEURL="https://${NAME}.groupdocs.net/"
+                CONFIG="./configs/${NAME}.groupdocs.net.toml"
+                DEPLOY_TARGET="prod"
+              fi
+            elif [ "$TARGET" = "qa" ]; then
+              if [ "$SUBDOMAIN" = "home" ]; then
+                BASEURL="https://qa.groupdocs.net/"
+                CONFIG="./configs/www.groupdocs.net.toml"
+                DEPLOY_TARGET="qa"
+              else
+                BASEURL="https://${NAME}-qa.groupdocs.net/"
+                CONFIG="./configs/${NAME}.groupdocs.net.toml"
+                DEPLOY_TARGET="qa"
+              fi
+            else
+              echo "Invalid deployment target"
+              exit 1
+            fi
+
+            rm -rf public
+            hugo --minify --config "$CONFIG" --baseURL "$BASEURL"
+            hugo deploy --config "$CONFIG" \
+                        --target "$DEPLOY_TARGET" \
+                        --invalidateCDN --verbose
+          done
+
       - name: Build
+        if: ${{ github.event.inputs.subdomain != 'all' }}
         run: |
           hugo --minify --config "${{ steps.setup.outputs.configfile }}" --baseURL "${{ steps.setup.outputs.baseurl }}"
 
       - name: Deploy
+        if: ${{ github.event.inputs.subdomain != 'all' }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
