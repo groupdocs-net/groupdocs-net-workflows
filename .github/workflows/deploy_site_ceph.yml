@@ -1,0 +1,167 @@
+name: Deploy Site Ceph
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deployment target'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - qa
+          - prod
+      subdomain:
+        description: 'Subdomain (e.g., home, about, blog)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - home
+          - about
+          - blog
+          - docs
+          - kb
+          - products
+          - reference
+          - websites
+
+run-name: Deploy ${{ inputs.subdomain }} to ${{ inputs.target }}
+
+env:
+  HUGO_VERSION: 0.101.0
+  AWS_REGION: us-west-2
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: groupdocs-net/groupdocs-net
+          token: ${{ secrets.READ_PAT }}
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: ${{ env.HUGO_VERSION }}
+          extended: true
+
+      - name: Set config and URL
+        if: ${{ github.event.inputs.subdomain != 'all' }}
+        id: setup
+        run: |
+          SUBDOMAIN="${{ github.event.inputs.subdomain }}"
+          TARGET="${{ github.event.inputs.target }}"
+
+          if [ "$SUBDOMAIN" = "home" ]; then
+            NAME=""
+          else
+            NAME="$SUBDOMAIN"
+          fi
+
+          if [ "$TARGET" = "prod" ]; then
+            if [ "$SUBDOMAIN" = "home" ]; then
+              BASEURL="https://www.groupdocs.net/"
+              CONFIG="./configs/www.groupdocs.net.toml"
+              DEPLOY_TARGET="prod-ceph"
+            else
+              BASEURL="https://${NAME:+$NAME.}groupdocs.net/"
+              CONFIG="./configs/${NAME:+$NAME.}groupdocs.net.toml"
+              DEPLOY_TARGET="prod-ceph"
+            fi
+          elif [ "$TARGET" = "qa" ]; then
+            if [ "$SUBDOMAIN" = "home" ]; then
+              BASEURL="https://qa.groupdocs.net/"
+              CONFIG="./configs/www.groupdocs.net.toml"
+              DEPLOY_TARGET="qa-ceph"
+            else
+              BASEURL="https://${NAME}-qa.groupdocs.net/"
+              CONFIG="./configs/${NAME}.groupdocs.net.toml"
+              DEPLOY_TARGET="qa-ceph"
+            fi
+          else
+            echo "Invalid deployment target"
+            exit 1
+          fi
+
+          echo "baseurl=$BASEURL" >> $GITHUB_OUTPUT
+          echo "configfile=$CONFIG" >> $GITHUB_OUTPUT
+          echo "deploytarget=$DEPLOY_TARGET" >> $GITHUB_OUTPUT
+
+      - name: Build and Deploy All
+        if: ${{ github.event.inputs.subdomain == 'all' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CEPH_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CEPH_SECRET_ACCESS_KEY }}
+          BUNNYNET_ACCESS_KEY: ${{ secrets.BUNNYNET_ACCESS_KEY }}
+          BUNNYNET_PURGE_URL: ${{ secrets.BUNNYNET_PURGE_URL }}
+        run: |
+          TARGET="${{ github.event.inputs.target }}"
+          for SUBDOMAIN in home about blog docs kb products reference websites; do
+            if [ "$SUBDOMAIN" = "home" ]; then
+              NAME=""
+            else
+              NAME="$SUBDOMAIN"
+            fi
+
+            if [ "$TARGET" = "prod" ]; then
+              if [ "$SUBDOMAIN" = "home" ]; then
+                BASEURL="https://www.groupdocs.net/"
+                CONFIG="./configs/www.groupdocs.net.toml"
+                DEPLOY_TARGET="prod-ceph"
+              else
+                BASEURL="https://${NAME}.groupdocs.net/"
+                CONFIG="./configs/${NAME}.groupdocs.net.toml"
+                DEPLOY_TARGET="prod-ceph"
+              fi
+            elif [ "$TARGET" = "qa" ]; then
+              if [ "$SUBDOMAIN" = "home" ]; then
+                BASEURL="https://qa.groupdocs.net/"
+                CONFIG="./configs/www.groupdocs.net.toml"
+                DEPLOY_TARGET="qa-ceph"
+              else
+                BASEURL="https://${NAME}-qa.groupdocs.net/"
+                CONFIG="./configs/${NAME}.groupdocs.net.toml"
+                DEPLOY_TARGET="qa-ceph"
+              fi
+            else
+              echo "Invalid deployment target"
+              exit 1
+            fi
+
+            rm -rf public
+            hugo --minify --config "$CONFIG" --baseURL "$BASEURL"
+            hugo deploy --config "$CONFIG" \
+                        --target "$DEPLOY_TARGET" \
+                        --verbose
+            
+            # Invalidate cache
+            curl -siG -H "X-Api-Key: $BUNNYNET_ACCESS_KEY" --data-urlencode "url=$BASEURL" "$BUNNYNET_PURGE_URL"
+          done
+
+      - name: Build
+        if: ${{ github.event.inputs.subdomain != 'all' }}
+        run: |
+          hugo --minify --config "${{ steps.setup.outputs.configfile }}" --baseURL "${{ steps.setup.outputs.baseurl }}"
+
+      - name: Deploy
+        if: ${{ github.event.inputs.subdomain != 'all' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CEPH_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CEPH_SECRET_ACCESS_KEY }}
+          BUNNYNET_ACCESS_KEY: ${{ secrets.BUNNYNET_ACCESS_KEY }}
+          BUNNYNET_PURGE_URL: ${{ secrets.BUNNYNET_PURGE_URL }}
+        run: |
+          hugo deploy --config "${{ steps.setup.outputs.configfile }}" \
+                      --target "${{ steps.setup.outputs.deploytarget }}" \
+                      --verbose
+          
+          # Invalidate cache
+          curl -siG -H "X-Api-Key: $BUNNYNET_ACCESS_KEY" --data-urlencode "url=${{ steps.setup.outputs.baseurl }}" "$BUNNYNET_PURGE_URL"
