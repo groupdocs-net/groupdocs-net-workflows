@@ -31,7 +31,6 @@ run-name: Deploy ${{ inputs.subdomain }} to ${{ inputs.target }}
 
 env:
   HUGO_VERSION: 0.101.0
-  AWS_REGION: us-west-2
 
 jobs:
   deploy:
@@ -98,6 +97,7 @@ jobs:
       - name: Build and Deploy All
         if: ${{ github.event.inputs.subdomain == 'all' }}
         env:
+          AWS_REGION: ${{ secrets.CEPH_REGION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.CEPH_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CEPH_SECRET_ACCESS_KEY }}
           BUNNYNET_ACCESS_KEY: ${{ secrets.BUNNYNET_ACCESS_KEY }}
@@ -154,6 +154,7 @@ jobs:
       - name: Deploy
         if: ${{ github.event.inputs.subdomain != 'all' }}
         env:
+          AWS_REGION: ${{ secrets.CEPH_REGION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.CEPH_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CEPH_SECRET_ACCESS_KEY }}
           BUNNYNET_ACCESS_KEY: ${{ secrets.BUNNYNET_ACCESS_KEY }}
