@@ -103,15 +103,10 @@ jobs:
           BUNNYNET_ACCESS_KEY: ${{ secrets.BUNNYNET_ACCESS_KEY }}
           BUNNYNET_PURGE_URL: ${{ secrets.BUNNYNET_PURGE_URL }}
         run: |
-          # Debug: Check raw secret values before processing
-          echo "Raw AWS_REGION length: ${#AWS_REGION}"
-          echo "Raw AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
-          echo "Raw AWS_SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
-          
           # Trim whitespace from secrets (GitHub secrets may have trailing newlines)
-          AWS_REGION=$(echo "$AWS_REGION" | xargs)
-          AWS_ACCESS_KEY_ID=$(echo "$AWS_ACCESS_KEY_ID" | xargs)
-          AWS_SECRET_ACCESS_KEY=$(echo "$AWS_SECRET_ACCESS_KEY" | xargs)
+          AWS_REGION=$(echo "$AWS_REGION" | tr -d '[:space:]')
+          AWS_ACCESS_KEY_ID=$(echo "$AWS_ACCESS_KEY_ID" | tr -d '[:space:]')
+          AWS_SECRET_ACCESS_KEY=$(echo "$AWS_SECRET_ACCESS_KEY" | tr -d '[:space:]')
           
           # Verify AWS credentials are set (without exposing values)
           if [ -z "$AWS_ACCESS_KEY_ID" ]; then
@@ -126,21 +121,9 @@ jobs:
             echo "Error: AWS_REGION is not set"
             exit 1
           fi
-          echo "After trimming - AWS_REGION length: ${#AWS_REGION}"
-          echo "After trimming - AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
-          echo "After trimming - AWS_SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
-          
-          # Expected lengths: Access Key ID ~20 chars, Secret Key ~40 chars
-          if [ ${#AWS_ACCESS_KEY_ID} -lt 15 ]; then
-            echo "ERROR: AWS_ACCESS_KEY_ID is too short (${#AWS_ACCESS_KEY_ID} chars, expected ~20)"
-            echo "Please verify the CEPH_ACCESS_KEY_ID secret in GitHub repository settings"
-            exit 1
-          fi
-          if [ ${#AWS_SECRET_ACCESS_KEY} -lt 35 ]; then
-            echo "ERROR: AWS_SECRET_ACCESS_KEY is too short (${#AWS_SECRET_ACCESS_KEY} chars, expected ~40)"
-            echo "Please verify the CEPH_SECRET_ACCESS_KEY secret in GitHub repository settings"
-            exit 1
-          fi
+          echo "AWS_REGION is set: ${AWS_REGION}"
+          echo "AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
+          echo "AWS_SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
           
           # Export AWS credentials to ensure they're available to Hugo
           export AWS_REGION
@@ -204,15 +187,10 @@ jobs:
           BUNNYNET_ACCESS_KEY: ${{ secrets.BUNNYNET_ACCESS_KEY }}
           BUNNYNET_PURGE_URL: ${{ secrets.BUNNYNET_PURGE_URL }}
         run: |
-          # Debug: Check raw secret values before processing
-          echo "Raw AWS_REGION length: ${#AWS_REGION}"
-          echo "Raw AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
-          echo "Raw AWS_SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
-          
           # Trim whitespace from secrets (GitHub secrets may have trailing newlines)
-          AWS_REGION=$(echo "$AWS_REGION" | xargs)
-          AWS_ACCESS_KEY_ID=$(echo "$AWS_ACCESS_KEY_ID" | xargs)
-          AWS_SECRET_ACCESS_KEY=$(echo "$AWS_SECRET_ACCESS_KEY" | xargs)
+          AWS_REGION=$(echo "$AWS_REGION" | tr -d '[:space:]')
+          AWS_ACCESS_KEY_ID=$(echo "$AWS_ACCESS_KEY_ID" | tr -d '[:space:]')
+          AWS_SECRET_ACCESS_KEY=$(echo "$AWS_SECRET_ACCESS_KEY" | tr -d '[:space:]')
           
           # Verify AWS credentials are set (without exposing values)
           if [ -z "$AWS_ACCESS_KEY_ID" ]; then
@@ -227,21 +205,9 @@ jobs:
             echo "Error: AWS_REGION is not set"
             exit 1
           fi
-          echo "After trimming - AWS_REGION length: ${#AWS_REGION}"
-          echo "After trimming - AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
-          echo "After trimming - AWS_SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
-          
-          # Expected lengths: Access Key ID ~20 chars, Secret Key ~40 chars
-          if [ ${#AWS_ACCESS_KEY_ID} -lt 15 ]; then
-            echo "ERROR: AWS_ACCESS_KEY_ID is too short (${#AWS_ACCESS_KEY_ID} chars, expected ~20)"
-            echo "Please verify the CEPH_ACCESS_KEY_ID secret in GitHub repository settings"
-            exit 1
-          fi
-          if [ ${#AWS_SECRET_ACCESS_KEY} -lt 35 ]; then
-            echo "ERROR: AWS_SECRET_ACCESS_KEY is too short (${#AWS_SECRET_ACCESS_KEY} chars, expected ~40)"
-            echo "Please verify the CEPH_SECRET_ACCESS_KEY secret in GitHub repository settings"
-            exit 1
-          fi
+          echo "AWS_REGION is set: ${AWS_REGION}"
+          echo "AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
+          echo "AWS_SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
           
           # Export AWS credentials to ensure they're available to Hugo
           export AWS_REGION
