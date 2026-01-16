@@ -184,8 +184,10 @@ jobs:
                         --target "$DEPLOY_TARGET" \
                         --verbose
             
-            # Invalidate cache
-            curl -siG -H "X-Api-Key: $BUNNYNET_ACCESS_KEY" --data-urlencode "url=$BASEURL" "$BUNNYNET_PURGE_URL"
+            # Invalidate cache (only for prod)
+            if [ "$TARGET" = "prod" ]; then
+              curl -siG -H "X-Api-Key: $BUNNYNET_ACCESS_KEY" --data-urlencode "url=$BASEURL" "$BUNNYNET_PURGE_URL"
+            fi
           done
 
       - name: Build
@@ -249,5 +251,7 @@ jobs:
                       --target "${{ steps.setup.outputs.deploytarget }}" \
                       --verbose
           
-          # Invalidate cache
-          curl -siG -H "X-Api-Key: $BUNNYNET_ACCESS_KEY" --data-urlencode "url=${{ steps.setup.outputs.baseurl }}" "$BUNNYNET_PURGE_URL"
+          # Invalidate cache (only for prod)
+          if [ "$TARGET" = "prod" ]; then
+            curl -siG -H "X-Api-Key: $BUNNYNET_ACCESS_KEY" --data-urlencode "url=${{ steps.setup.outputs.baseurl }}" "$BUNNYNET_PURGE_URL"
+          fi
